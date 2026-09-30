@@ -1,15 +1,16 @@
 // ─── Auditoría certificada (evidence trail) del entorno EMVCo ────────────────
 // Cadena append-only con encadenamiento hash SHA-256: cada registro sella el
 // hash del anterior, de modo que alterar cualquier evidencia rompe la cadena
-// en la verificación. Es la "certified audit" del entorno: todo run de prueba
-// queda firmado (payload + resultado + operador + sello temporal) y el reporte
-// es exportable como evidencia para el paquete de certificación.
+// en la verificación. Cada corrida de pruebas agrupa sus evidencias bajo un
+// `runId` (R<timestamp>) para trazabilidad de la ejecución. Exportable a
+// JSON (paquete de certificación) y CSV (hoja de evidencias).
 
 export type AuditVerdict = "PASS" | "FAIL" | "SKIPPED";
 
 export interface AuditRecord {
   seq: number;
   id: string;
+  runId: string;
   time: string;
   operator: string;
   test: string;
@@ -31,6 +32,10 @@ export interface AuditVerification {
 
 const AUDIT_KEY = "emvco-cert-audit";
 export const AUDIT_GENESIS = "GENESIS";
+
+export function newRunId(): string {
+  return `R${Date.now()}`;
+}
 
 async function sha256(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -54,6 +59,7 @@ export function loadAudit(): AuditRecord[] {
 }
 
 export async function appendAudit(input: {
+  runId?: string;
   operator: string;
   test: string;
   mti: string;
@@ -68,6 +74,7 @@ export async function appendAudit(input: {
   const record: AuditRecord = {
     seq: chain.length + 1,
     id: `A${Date.now()}${Math.floor(Math.random() * 1000)}`,
+    runId: (input.runId ?? "—").slice(0, 24),
     time: new Date().toISOString(),
     operator: input.operator.slice(0, 24),
     test: input.test.slice(0, 80),
@@ -91,12 +98,11 @@ export async function verifyAudit(): Promise<AuditVerification> {
   const chain = readChain();
   let prevHash = AUDIT_GENESIS;
   for (const rec of chain) {
-    const { hash, ...rest } = rec;
-    const recomputed = await sha256(JSON.stringify(rest));
-    if (recomputed !== hash || rec.prevHash !== prevHash) {
+    const recomputed = await sha256(JSON.stringify({ ...rec, hash: undefined }));
+    if (recomputed !== rec.hash || rec.prevHash !== prevHash) {
       return { ok: false, records: chain.length, brokenSeq: rec.seq };
     }
-    prevHash = hash;
+    prevHash = rec.hash;
   }
   return { ok: true, records: chain.length };
 }
@@ -112,4 +118,16 @@ export function exportAuditPackage(operator: string): string {
     records: chain.length,
     chain,
   }, null, 2);
+}
+
+// Hoja de evidencias CSV (seq,runId,sello,operador,prueba,mti,stan,de39,veredicto,detail,hash).
+export function exportAuditCSV(): string {
+  const chain = readChain();
+  const esc = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
+  const header = "seq,runId,time,operator,test,mti,stan,responseCode,verdict,detail,hash";
+  const rows = chain.map((r) => [
+    r.seq, esc(r.runId), esc(r.time), esc(r.operator), esc(r.test), esc(r.mti), esc(r.stan),
+    esc(r.responseCode), r.verdict, esc(r.detail), esc(r.hash),
+  ].join(","));
+  return [header, ...rows].join("\n");
 }

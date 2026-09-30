@@ -40,6 +40,22 @@ Réplica funcional de la consola del operador **Swift Ledger** (swiftledger.us) 
   evidencia JSON** para el expediente de certificación.
 - Acceso por consola del navegador: `await __emvco.runEmvcoTestSuite()`.
 
+## Novedades · instancia EMVCo mejorada
+- **Capa ISO 8583:1993** (`src/emvco/iso8583.ts`): empaquetado y parseo de mensajes con
+  bitmap primario, DEs fijos/LLVAR/LLLVAR, wire hex y **BER-TLV para DE55** (ARQC/TVR).
+  Laboratorio visual: constructor + parser de mensajes.
+- **Tarjetas de prueba EMV** (`src/emvco/cards.ts`): 3 perfiles de laboratorio (VISA/MC)
+  con AID, CVM, ARQC y TVR; generan el DE55 de cada 0200.
+- **Catálogo de 12 casos L3** (`src/emvco/cases.ts`): echo, venta chip ARQC, fallback
+  bloqueado/permitido, declinación forzada, monto inválido, lote dentro/excede floor
+  limit, cola llena, **duplicado STAN → DE39 94**, **reversión por timeout 0400→0410**
+  y flujo completo offline + cierre. Cada caso muestra sus wires ISO reales.
+- **Host enriquecido**: detección de duplicados en lote (94), reversión con STAN
+  preservado, reglas de encolado offline extraídas como función pura.
+- **Auditoría con runId**: cada corrida agrupa sus evidencias; exportación **JSON y CSV**.
+- **Look EMVCo**: la instancia de certificación usa tema claro propio (fondo blanco/gris
+  azulado, navy `#003087` y azul `#0072ce`), distinto del dark theme de la consola.
+
 ## Stack
 Vite 8 · React 19 · TypeScript (strict). Sin dependencias de UI: CSS propio.
 

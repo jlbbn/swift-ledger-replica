@@ -16,6 +16,8 @@ import UsdtTron from "./pages/UsdtTron.tsx";
 import EmvcoCert from "./pages/EmvcoCert.tsx";
 import Placeholder from "./pages/Placeholder.tsx";
 import { handleEchoTest, processOfflineBatch, runEmvcoTestSuite, validateTransaction } from "./emvco/host.ts";
+import { packISO, unpackISO, parseTLV, buildTLV } from "./emvco/iso8583.ts";
+import { runCaseById, runAllCases } from "./emvco/cases.ts";
 
 const TABS: [string, string][] = [
   ["dashboard", "Descripción general"],
@@ -42,7 +44,10 @@ export default function App() {
 
   // Harness EMVCo expuesto en consola para pruebas manuales (sin UI).
   useEffect(() => {
-    (window as unknown as { __emvco?: unknown }).__emvco = { handleEchoTest, validateTransaction, processOfflineBatch, runEmvcoTestSuite };
+    (window as unknown as { __emvco?: unknown }).__emvco = {
+      handleEchoTest, validateTransaction, processOfflineBatch, runEmvcoTestSuite,
+      packISO, unpackISO, parseTLV, buildTLV, runCaseById, runAllCases,
+    };
   }, []);
 
   const notify = (t: string) => setToast(t);
@@ -90,7 +95,7 @@ export default function App() {
           ))}
         </nav>
         <Ticker />
-        <main className="content">
+        <main className={`content ${route === "emvco-cert" ? "content--light" : ""}`}>
           {page}
           <EmvcoAttribution />
         </main>

@@ -5,18 +5,19 @@
 //                      TMS que exige chip (05) → rechazo DE39 "81" / "05"
 //   T3  Store & Fwd  — MTI 0420 (Batch Upload) con floor limits del perfil TMS;
 //                      excedidas = "Rechazada en Conciliación" (DE39 61);
-//                      las válidas PENDING → SETTLED en el Ledger global.
+//                      duplicadas = DE39 94; válidas PENDING → SETTLED.
+//   Reversión        — MTI 0400 → 0410 por timeout de una 0200 original.
 //
 // T4/T5 (hardware HSM L1/L2 y red directa) quedan SKIPPED: justifican la ruta BaaS.
-// Puro estado y lógica — los resultados se imprimen SIEMPRE en consola con el
-// prefix [EMVCo L3 · HOST MOCK] y, opcionalmente, al monitor vía `onLog`.
+// Los resultados se imprimen SIEMPRE en consola con el prefix
+// [EMVCo L3 · HOST MOCK] y, opcionalmente, al monitor vía `onLog`.
 
 import { loadProfile } from "./profile.ts";
 import type { TerminalProfile } from "./profile.ts";
 import { nowMx, randNum } from "../lib/format.ts";
 
 // ─── Tipos ISO 8583 (subset del harness) ─────────────────────────────────────
-export type ResponseCode = "00" | "05" | "12" | "13" | "61" | "81";
+export type ResponseCode = "00" | "05" | "12" | "13" | "61" | "81" | "94";
 
 // DE22 — PAN Entry Mode: 02 banda · 05 chip · 07 CTLS chip · 91 CTLS banda
 export type EntryModeCode = "02" | "05" | "07" | "91";
@@ -28,6 +29,7 @@ export const RESPONSE_TEXT: Record<ResponseCode, string> = {
   "13": "INVALID AMOUNT",
   "61": "EXCEEDS FLOOR LIMIT — RECHAZADA EN CONCILIACIÓN",
   "81": "PIN CRYPTOGRAPHIC ERROR — FALLBACK NO PERMITIDO",
+  "94": "DUPLICATE TRANSMISSION — REF/STAN DUPLICADO",
 };
 
 export interface AcquirerProfile {
@@ -87,6 +89,7 @@ export interface QueuedSale {
   entryMode: string;
   time: string;
   authCode: string | null;
+  stan: string;
 }
 
 export interface LedgerEntry {
@@ -124,14 +127,25 @@ export function saveLedger(entries: LedgerEntry[]) {
   try { localStorage.setItem(LEDGER_KEY, JSON.stringify(entries)); } catch { /* noop */ }
 }
 
-// Encolado Store & Forward — sella AuthCode + BankReference + Timestamp
+// ─── Reglas de encolado offline (terminal) — puras y reutilizables ──────────
+export function evaluateOfflineEnqueue(
+  queueLength: number,
+  amount: number,
+  profile: TerminalProfile = loadProfile(),
+): { ok: true } | { ok: false; error: string } {
+  if (!(amount > 0)) return { ok: false, error: "MONTO INVÁLIDO" };
+  if (amount > profile.offlineMaxAmount) {
+    return { ok: false, error: `EXCEDE LÍMITE OFFLINE (TOPE $${profile.offlineMaxAmount}) — DECLINADA EN TERMINAL` };
+  }
+  if (queueLength >= profile.offlineMaxQueue) return { ok: false, error: "MEMORIA LLENA — HAGA CIERRE DE LOTE" };
+  return { ok: true };
+}
+
+// Encolado Store & Forward — sella AuthCode + BankReference + STAN + Timestamp
 export function enqueueOfflineSale(input: { amount: number; entryMode: string; ref?: string }): { item: QueuedSale; entry: LedgerEntry } | { error: string } {
   const profile = loadProfile();
-  if (!(input.amount > 0)) return { error: "MONTO INVÁLIDO" };
-  if (input.amount > profile.offlineMaxAmount) {
-    return { error: `EXCEDE LÍMITE OFFLINE (TOPE $${profile.offlineMaxAmount}) — DECLINADA EN TERMINAL` };
-  }
-  if (loadQueue().length >= profile.offlineMaxQueue) return { error: "MEMORIA LLENA — HAGA CIERRE DE LOTE" };
+  const gate = evaluateOfflineEnqueue(loadQueue().length, input.amount, profile);
+  if (!gate.ok) return { error: gate.error };
   const ref = (input.ref ?? `SF${randNum(10)}`).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12) || `SF${randNum(10)}`;
   const item: QueuedSale = {
     id: `Q${Date.now()}${randNum(3)}`,
@@ -140,6 +154,7 @@ export function enqueueOfflineSale(input: { amount: number; entryMode: string; r
     entryMode: input.entryMode,
     time: nowMx(),
     authCode: randNum(6),
+    stan: stan(),
   };
   const entry: LedgerEntry = {
     id: item.id,
@@ -196,7 +211,9 @@ export function parseEntryMode(raw?: string | null): EntryModeCode | null {
   if (!raw) return null;
   const up = raw.toUpperCase();
   if (up in ENTRY_MODE_TO_DE22) return ENTRY_MODE_TO_DE22[up];
-  return (["02", "05", "07", "91"] as const).includes(up as EntryModeCode) ? (up as EntryModeCode) : null;
+  // DE22 wire es n3 ("005") — el harness normaliza al código de 2 dígitos (9F39)
+  const two = up.length === 3 && up.startsWith("0") ? up.slice(1) : up;
+  return (["02", "05", "07", "91"] as const).includes(two as EntryModeCode) ? (two as EntryModeCode) : null;
 }
 
 export function validateTransaction(payload: TxnPayload, profile: AcquirerProfile = getAcquirerProfile()): HostAdvice {
@@ -224,6 +241,21 @@ export function validateTransaction(payload: TxnPayload, profile: AcquirerProfil
   };
   hostLog(undefined, advice.approved ? "rx" : "err",
     `${advice.approved ? "→" : "↛"} MTI ${advice.mti} · STAN ${advice.stan} · DE22 ${em ?? "??"} · DE39 ${code} · ${detail}`);
+  return advice;
+}
+
+// ─── Reversión — MTI 0400 → 0410 (timeout de una 0200 original) ─────────────
+export async function processReversal(original: HostAdvice, opts: HostOpts = {}): Promise<HostAdvice> {
+  hostLog(opts.onLog, "tx", `← MTI 0400 REVERSAL · STAN ${original.stan} · DE39 original ${original.responseCode} · timeout de la 0200`);
+  await sleep(opts.latencyMs ?? 250);
+  const advice: HostAdvice = {
+    mti: "0410",
+    stan: original.stan, // la reversión conserva el STAN original
+    responseCode: "00",
+    approved: true,
+    detail: `REVERSAL ACEPTADA · ORIGINAL ${original.stan} ANULADO · DE39 00`,
+  };
+  hostLog(opts.onLog, "rx", `→ MTI ${advice.mti} · STAN ${advice.stan} · DE39 ${advice.responseCode} · ${advice.detail}`);
   return advice;
 }
 
@@ -268,19 +300,27 @@ export async function processOfflineBatch(batchQueue?: QueuedSale[], opts: Batch
 
   hostLog(opts.onLog, "tx", `← MTI 0420 BATCH UPLOAD · ${batchId} · ${queue.length} ítem(s) · floor limit $${profile.offlineMaxAmount} ${profile.currency} (${limitCents}¢)`);
 
+  const seenRefs = new Set<string>();
   for (let i = 0; i < queue.length; i++) {
     const q = queue[i];
     const amountCents = Math.round(q.total * 100);
     opts.onProgress?.(i + 1, queue.length);
     await sleep(opts.latencyMs ?? 180);
 
-    // El host RE-VALIDA cada ítem contra los floor limits del perfil TMS
-    const overLimit = amountCents > limitCents;
-    const item: BatchItemResult = overLimit
-      ? { queueId: q.id, ref: q.ref, amountCents, entryMode: q.entryMode, decision: "REJECTED", responseCode: "61",
-          detail: `RECHAZADA EN CONCILIACIÓN — EXCEDE FLOOR LIMIT OFFLINE ($${profile.offlineMaxAmount}) · DE39 61` }
-      : { queueId: q.id, ref: q.ref, amountCents, entryMode: q.entryMode, decision: "APPROVED", responseCode: "00",
-          detail: "APROBADA EN CONCILIACIÓN · DE39 00" };
+    let item: BatchItemResult;
+    if (seenRefs.has(q.ref)) {
+      // Duplicado de REF/STAN dentro del lote → rechazo de conciliación 94
+      item = { queueId: q.id, ref: q.ref, amountCents, entryMode: q.entryMode, decision: "REJECTED", responseCode: "94",
+        detail: "RECHAZADA EN CONCILIACIÓN — REF/STAN DUPLICADO EN EL LOTE · DE39 94" };
+    } else {
+      seenRefs.add(q.ref);
+      const overLimit = amountCents > limitCents;
+      item = overLimit
+        ? { queueId: q.id, ref: q.ref, amountCents, entryMode: q.entryMode, decision: "REJECTED", responseCode: "61",
+            detail: `RECHAZADA EN CONCILIACIÓN — EXCEDE FLOOR LIMIT OFFLINE ($${profile.offlineMaxAmount}) · DE39 61` }
+        : { queueId: q.id, ref: q.ref, amountCents, entryMode: q.entryMode, decision: "APPROVED", responseCode: "00",
+            detail: "APROBADA EN CONCILIACIÓN · DE39 00" };
+    }
     result.items.push(item);
     if (item.decision === "APPROVED") { result.approved++; result.approvedCents += amountCents; }
     else { result.rejected++; result.rejectedCents += amountCents; }
@@ -294,7 +334,7 @@ export async function processOfflineBatch(batchQueue?: QueuedSale[], opts: Batch
   }
 
   // Conciliación contra el Ledger global: aprobadas PENDING → SETTLED;
-  // rechazadas salen del pool PENDING (su traza queda en el reporte y la auditoría).
+  // rechazadas (61/94) salen del pool PENDING (su traza queda en auditoría).
   const approvedIds = new Set(result.items.filter((i) => i.decision === "APPROVED").map((i) => i.queueId));
   const rejectedIds = new Set(result.items.filter((i) => i.decision === "REJECTED").map((i) => i.queueId));
   const nextLedger = loadLedger()
@@ -343,8 +383,8 @@ export async function runEmvcoTestSuite(opts: HostOpts = {}): Promise<SuiteResul
   const over = profile.offlineMaxAmount + 1000;
   const batch = await processOfflineBatch(
     [
-      { id: "T3A", ref: "SUITEOK1", total: 100, entryMode: "CHIP", time: nowMx(), authCode: null },
-      { id: "T3B", ref: "SUITEOVER", total: over, entryMode: "CHIP", time: nowMx(), authCode: null },
+      { id: "T3A", ref: "SUITEOK1", total: 100, entryMode: "CHIP", time: nowMx(), authCode: null, stan: "100001" },
+      { id: "T3B", ref: "SUITEOVER", total: over, entryMode: "CHIP", time: nowMx(), authCode: null, stan: "100002" },
     ],
     { onLog: opts.onLog, dryRun: true, batchId: `SUITE-${Date.now()}` },
   );
