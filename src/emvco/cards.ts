@@ -1,6 +1,6 @@
 // ─── Tarjetas de prueba EMV (perfiles del laboratorio L3) ────────────────────
-// Réplicas de "test cards" de laboratorio: PAN de prueba, AID, CVM y datos
-// criptográficos simulados (ARQC/TVR). El ARQC se valida contra el monto en el
+// Perfiles de "test cards" de laboratorio: PAN de prueba, AID, CVM y datos
+// criptográficos de prueba (ARQC/TVR). El ARQC se valida contra el monto en el
 // caso L3-02/L3-11; las tarjetas "fallback" simulan lectura de banda.
 
 import { buildTLV } from "./iso8583.ts";

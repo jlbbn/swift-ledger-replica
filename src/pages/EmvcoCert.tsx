@@ -19,8 +19,8 @@ export default function EmvcoCert({ operator, notify }: { operator: string; noti
     <div className="emvco-lab">
       <div className="page-head">
         <div>
-          <div className="eyebrow" style={{ color: "#0072ce" }}>EMVCo L3 · Entorno de certificación</div>
-          <h1 className="h1" style={{ color: "#003087" }}>Certificación EMVCo L3 · host simulado + auditoría</h1>
+          <div className="eyebrow" style={{ color: "#78BE20" }}>EMVCo L3 · Entorno de certificación</div>
+          <h1 className="h1" style={{ color: "#003359" }}>Certificación EMVCo L3 · Host + Audit</h1>
           <p className="sub">
             Harness lógico del adquirente (MTI 0800 / 0200 / 0400 / 0420) contra el perfil TMS del terminal
             bajo certificación, con capa ISO 8583 real y evidence trail encadenado SHA-256.
@@ -30,7 +30,7 @@ export default function EmvcoCert({ operator, notify }: { operator: string; noti
 
       <div className="lab-banner">
         <div>
-          <div className="lab-title">EMVCo L3 Certification Environment · réplica de laboratorio</div>
+          <div className="lab-title">EMVCo L3 Certification Environment</div>
           <div className="lab-sub">
             T4/T5 (hardware HSM y red directa) permanecen SKIPPED — justifican la migración a la ruta
             BaaS/API. No es un producto certificado por EMVCo.

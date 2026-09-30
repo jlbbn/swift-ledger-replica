@@ -229,7 +229,7 @@ export default function ExecutorPanel({ operator, notify, onAuditTick }: {
       </Panel>
 
       <div className="grid2">
-        <Panel title="Monitor de certificación" desc="Diálogo crudo POS ↔ host simulado con wires ISO 8583.">
+        <Panel title="Monitor de certificación" desc="Diálogo crudo POS ↔ host con wires ISO 8583.">
           <div className="console" ref={consoleRef}>
             {logs.length === 0 ? <span className="faint">$ esperando ejecución de pruebas…</span> :
               logs.map((l) => (

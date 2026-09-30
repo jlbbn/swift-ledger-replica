@@ -1,5 +1,5 @@
 /* ─── Swift Ledger · Entorno de certificación ───────────────────────────────
-   Design system oscuro réplica de la consola del operador (swiftledger.us).
+   Design system oscuro alineado a la consola del operador (swiftledger.us).
    Tokens de color, layout de shell (sidebar/topbar/tabs/ticker), tarjetas,
    consolas de telemetría y pie de atribución de marcas. */
 
@@ -274,44 +274,54 @@ label.f-label { display: block; font-size: 10px; letter-spacing: 0.08em; text-tr
 .emvco-lab {
   --bg: #ffffff;
   --panel: #ffffff;
-  --panel-2: #f2f5f9;
-  --border: #d4dbe6;
-  --border-soft: #e6ebf2;
-  --text: #1c2536;
+  --panel-2: #f4f7fa;
+  --border: #c9d3df;
+  --border-soft: #e3e8f0;
+  --text: #333333;
   --muted: #55617a;
   --faint: #8a94a6;
-  --accent: #003087;
-  --accent-strong: #003087;
-  --ok: #177245;
+  --accent: #003359;
+  --accent-strong: #003359;
+  --emv-navy: #003359;
+  --emv-green: #78BE20;
+  --ok: #3f7a0d;
   --warn: #b45309;
   --err: #c62828;
-  --info: #0072ce;
+  --info: #003359;
+  --sans: Arial, Helvetica, sans-serif;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   padding: 16px;
+  font-family: var(--sans);
+  font-size: 13px; /* ≈10pt cuerpo de documento */
 }
-.emvco-lab .card { box-shadow: 0 1px 2px rgba(16, 42, 67, 0.06); }
-.emvco-lab .input, .emvco-lab .select { background: #ffffff; color: var(--text); }
+.emvco-lab .card { box-shadow: 0 1px 2px rgba(0, 51, 89, 0.08); }
+.emvco-lab .input, .emvco-lab .select { background: #ffffff; color: var(--text); font-family: var(--sans); }
 .emvco-lab .queue-item { background: #ffffff; }
-.emvco-lab .console { background: #0d1420; border-color: #1f2b3d; }
+.emvco-lab .console { background: #0d1420; border-color: #1f2b3d; --faint: #64748b; }
 .emvco-lab .console .t { color: #64748b; }
 .emvco-lab .codebox { background: #0d1420; border-color: #1f2b3d; color: #dbe4f0; }
-.emvco-lab .btn-primary { background: #003087; border-color: #003087; }
-.emvco-lab .btn-primary:hover { background: #00439c; }
+.emvco-lab .btn-primary { background: #003359; border-color: #003359; }
+.emvco-lab .btn-primary:hover { background: #0f3b60; }
 .emvco-lab .btn { background: #ffffff; }
-.emvco-lab .btn:hover { border-color: #0072ce; }
+.emvco-lab .btn:hover { border-color: #78BE20; }
+.emvco-lab .table th { color: #003359; }
+.emvco-lab .card-title { color: #003359; }
+.emvco-lab a { color: #0000ff; text-decoration: underline; }
+.emvco-lab .h1 { font-style: italic; }
 .emvco-lab .sub .faint, .emvco-lab .stat-sub { color: var(--faint); }
 
 /* Banner del laboratorio */
 .lab-banner {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  background: #ffffff; border: 1px solid var(--border-soft);
-  border-left: 4px solid #003087; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+  background: #ffffff; border: 1px solid #e3e8f0;
+  border-left: 4px solid #003359; border-bottom: 2px solid #78BE20;
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
 }
-.lab-banner .lab-title { font-size: 16px; font-weight: 750; color: #003087; letter-spacing: -0.01em; }
-.lab-banner .lab-sub { font-size: 11px; color: #55617a; }
+.lab-banner .lab-title { font-size: 17px; font-weight: 700; font-style: italic; color: #003359; letter-spacing: -0.01em; }
+.lab-banner .lab-sub { font-size: 11.5px; color: #55617a; }
 .lab-banner .lab-meta { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Subtabs del laboratorio */

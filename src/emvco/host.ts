@@ -1,5 +1,5 @@
-// ─── EMVCo L3 · Host Adquirente MOCK — entorno de certificación ──────────────
-// Simulador lógico del autorizador para correr y auditar las pruebas en local:
+// ─── EMVCo L3 · Host Adquirente — entorno de certificación ───────────────────
+// Motor del autorizador para correr y auditar las pruebas en local:
 //   T1  Red          — MTI 0800 (Network Management)  → 0810 · DE39 "00"
 //   T2  Fallback     — MTI 0200 con POS Entry Mode banda (DE22=02) vs perfil
 //                      TMS que exige chip (05) → rechazo DE39 "81" / "05"
@@ -10,7 +10,7 @@
 //
 // T4/T5 (hardware HSM L1/L2 y red directa) quedan SKIPPED: justifican la ruta BaaS.
 // Los resultados se imprimen SIEMPRE en consola con el prefix
-// [EMVCo L3 · HOST MOCK] y, opcionalmente, al monitor vía `onLog`.
+// [EMVCo L3 · HOST] y, opcionalmente, al monitor vía `onLog`.
 
 import { loadProfile } from "./profile.ts";
 import type { TerminalProfile } from "./profile.ts";
@@ -61,7 +61,7 @@ export interface HostOpts {
 
 // ─── Logger dual: consola del navegador (siempre) + monitor (opcional) ───────
 function hostLog(onLog: HostLogFn | undefined, kind: HostLogKind, text: string) {
-  console.log(`[EMVCo L3 · HOST MOCK] ${text}`);
+  console.log(`[EMVCo L3 · HOST] ${text}`);
   onLog?.(kind, text);
 }
 

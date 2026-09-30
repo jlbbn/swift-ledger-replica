@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Panel } from "../Panel.tsx";
-import { exportAuditCSV, exportAuditPackage, loadAudit, verifyAudit } from "../../emvco/audit.ts";
+import { exportAuditCSV, exportAuditPackage, buildAuditReportHTML, loadAudit, verifyAudit } from "../../emvco/audit.ts";
 import type { AuditRecord, AuditVerification } from "../../emvco/audit.ts";
 
 export default function AuditPanel({ tick, operator, notify }: { tick: number; operator: string; notify: (t: string) => void }) {
@@ -36,6 +36,7 @@ export default function AuditPanel({ tick, operator, notify }: { tick: number; o
           <button className="btn btn-sm" onClick={checkIntegrity} disabled={busy}>{busy ? "◌ Verificando…" : "Verificar integridad"}</button>
           <button className="btn btn-sm" onClick={() => { download(exportAuditPackage(operator), `emvco-audit-${Date.now()}.json`, "application/json"); notify("Paquete JSON exportado"); }}>Exportar JSON</button>
           <button className="btn btn-sm" onClick={() => { download(exportAuditCSV(), `emvco-audit-${Date.now()}.csv`, "text/csv"); notify("Hoja CSV exportada"); }}>Exportar CSV</button>
+          <button className="btn btn-sm btn-primary" onClick={() => { download(buildAuditReportHTML(operator), `emvco-l3-report-${Date.now()}.html`, "text/html"); notify("Informe de certificación exportado"); }}>Exportar informe (HTML)</button>
         </div>
       }
     >

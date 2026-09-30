@@ -8,10 +8,10 @@ export default function Placeholder({ route }: { route: string }) {
         <div>
           <div className="eyebrow">Swift Ledger · Consola del operador</div>
           <h1 className="h1">{ROUTE_LABELS[route] ?? route}</h1>
-          <p className="sub">Módulo de solo lectura de la réplica del entorno de certificación.</p>
+          <p className="sub">Módulo de solo lectura del entorno de certificación.</p>
         </div>
       </div>
-      <Panel title={ROUTE_LABELS[route] ?? route} desc="Este módulo se muestra con fines de navegación en la réplica; no realiza operaciones.">
+      <Panel title={ROUTE_LABELS[route] ?? route} desc="Este módulo se muestra con fines de navegación en el entorno de certificación; no realiza operaciones.">
         <div className="empty">Sin registros en este módulo.</div>
       </Panel>
     </div>
