@@ -53,8 +53,11 @@ Réplica funcional de la consola del operador **Swift Ledger** (swiftledger.us) 
 - **Host enriquecido**: detección de duplicados en lote (94), reversión con STAN
   preservado, reglas de encolado offline extraídas como función pura.
 - **Auditoría con runId**: cada corrida agrupa sus evidencias; exportación **JSON y CSV**.
-- **Look EMVCo**: la instancia de certificación usa tema claro propio (fondo blanco/gris
-  azulado, navy `#003087` y azul `#0072ce`), distinto del dark theme de la consola.
+- **Look EMVCo oficial**: la instancia de certificación usa tema claro propio con la
+  identidad exacta — navy `#003359` (títulos/bordes), verde hoja `#78BE20` (acentos),
+  cuerpo `#333` 10pt en **Arial**, enlaces `#0000FF` subrayados, títulos en negrita
+  cursiva. Incluye **informe de evidencias HTML exportable** con membrete estilo
+  documento EMVCo.
 
 ## Stack
 Vite 8 · React 19 · TypeScript (strict). Sin dependencias de UI: CSS propio.
